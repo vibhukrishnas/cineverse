@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Film, Star, TrendingUp, Bookmark, Sparkles, MessageCircle, Users as UsersIcon } from 'lucide-react'
+import { Film, Star, TrendingUp, Bookmark, Sparkles, MessageCircle, Users as UsersIcon, Ticket, MapPin } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { TMDBMovie, TMDBMovieDetail } from '@/types/tmdb.types'
@@ -239,26 +239,26 @@ export default function DashboardPage() {
           {/* Recent Activity Card */}
           <RecentActivityWidget />
 
-          {/* AI Recommendations */}
+          {/* AI Recommendations - Now Actually Works! */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-purple-500" />
+                <Sparkles className="h-5 w-5 text-purple-500 animate-pulse" />
                 AI Recommendations
               </CardTitle>
-              <CardDescription>Get personalized movie suggestions powered by AI</CardDescription>
+              <CardDescription>Personalized movies based on your taste</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-12">
+              <div className="text-center py-8">
                 <Sparkles className="h-12 w-12 text-purple-500 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold mb-2">Discover Your Perfect Movies</h3>
                 <p className="text-muted-foreground text-sm mb-6">
-                  Select your favorite genres and let our AI find the best matches for you
+                  AI-powered recommendations using collaborative filtering
                 </p>
                 <Link href="/for-you">
                   <Button size="lg" className="gap-2">
                     <Sparkles className="h-4 w-4" />
-                    Get Recommendations
+                    View AI Recommendations
                   </Button>
                 </Link>
               </div>
@@ -313,6 +313,70 @@ export default function DashboardPage() {
                 </Link>
               </div>
             )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Theater Booking Section - NEW! */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.52 }}
+      >
+        <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Ticket className="h-5 w-5 text-primary" />
+                  Theater Bookings
+                  <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full ml-2">NEW</span>
+                </CardTitle>
+                <CardDescription>Find theaters and book your movie tickets</CardDescription>
+              </div>
+              <Link href="/theaters">
+                <Button variant="default" size="sm">
+                  <MapPin className="h-4 w-4 mr-2" />
+                  Find Theaters
+                </Button>
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-3">
+              {/* Quick Action: Search Theaters */}
+              <Link href="/theaters" className="group">
+                <div className="p-6 rounded-lg border-2 border-dashed border-primary/30 hover:border-primary/60 hover:bg-primary/5 transition-all cursor-pointer">
+                  <MapPin className="h-8 w-8 text-primary mb-3" />
+                  <h3 className="font-semibold mb-1">Find Theaters</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Search theaters by city and amenities
+                  </p>
+                </div>
+              </Link>
+
+              {/* Quick Action: View Bookings */}
+              <Link href="/theaters/bookings" className="group">
+                <div className="p-6 rounded-lg border-2 border-dashed border-primary/30 hover:border-primary/60 hover:bg-primary/5 transition-all cursor-pointer">
+                  <Ticket className="h-8 w-8 text-primary mb-3" />
+                  <h3 className="font-semibold mb-1">My Bookings</h3>
+                  <p className="text-sm text-muted-foreground">
+                    View your upcoming and past bookings
+                  </p>
+                </div>
+              </Link>
+
+              {/* Feature Highlight */}
+              <div className="p-6 rounded-lg bg-primary/10 border border-primary/30">
+                <Sparkles className="h-8 w-8 text-primary mb-3" />
+                <h3 className="font-semibold mb-1">Premium Features</h3>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>✓ IMAX & Dolby Atmos</li>
+                  <li>✓ Seat selection</li>
+                  <li>✓ Price comparison</li>
+                </ul>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </motion.div>

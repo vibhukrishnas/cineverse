@@ -1,0 +1,22 @@
+config:
+  target: "http://localhost:3000"
+  phases:
+    - duration: 30
+      arrivalRate: 1
+      name: "Light load"
+
+scenarios:
+  - name: "API Health Check"
+    flow:
+      - get:
+          url: "/api/movies/discover"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/api/movies/trending"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/api/movies/now-playing"
+          expect:
+            - statusCode: 200

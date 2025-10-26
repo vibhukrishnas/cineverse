@@ -5,6 +5,7 @@ import { Sparkles, Loader2, Globe } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { getAIRecommendationsByGenres } from '@/app/actions/ai'
+import { AIRecommendations } from '@/components/ai/ai-recommendations'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
@@ -113,13 +114,18 @@ export default function ForYouPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* AI Recommendations Section - Personalized picks */}
+      <div className="mb-12">
+        <AIRecommendations />
+      </div>
+
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
           <Sparkles className="h-8 w-8 text-purple-500" />
-          <h1 className="text-4xl font-bold">For You</h1>
+          <h1 className="text-4xl font-bold">Genre-Based Recommendations</h1>
         </div>
         <p className="text-muted-foreground text-lg">
-          Get personalized movie recommendations powered by Google Gemini AI.
+          Select your favorite genres to get personalized recommendations powered by Google Gemini AI.
         </p>
         
         {/* Language Selector */}

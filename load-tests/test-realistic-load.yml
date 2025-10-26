@@ -1,0 +1,56 @@
+config:
+  target: "http://localhost:3000"
+  phases:
+    - duration: 60
+      arrivalRate: 2
+      name: "Warm up phase"
+    - duration: 120
+      arrivalRate: 5
+      name: "Ramp up to moderate load"
+    - duration: 60
+      arrivalRate: 10
+      name: "Peak load"
+  defaults:
+    headers:
+      User-Agent: "Artillery Load Test"
+
+scenarios:
+  - name: "Homepage Visit"
+    weight: 30
+    flow:
+      - get:
+          url: "/"
+          capture:
+            - json: "$"
+              as: "homepage"
+
+  - name: "Browse Discover Page"
+    weight: 25
+    flow:
+      - get:
+          url: "/discover"
+      - think: 3
+
+  - name: "Search Movies"
+    weight: 20
+    flow:
+      - get:
+          url: "/search?q=inception"
+      - think: 2
+      - get:
+          url: "/movie/27205"
+      - think: 5
+
+  - name: "Browse Theaters"
+    weight: 15
+    flow:
+      - get:
+          url: "/theaters"
+      - think: 3
+
+  - name: "View For You Page"
+    weight: 10
+    flow:
+      - get:
+          url: "/for-you"
+      - think: 4

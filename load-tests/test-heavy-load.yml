@@ -1,0 +1,46 @@
+config:
+  target: "http://localhost:3000"
+  phases:
+    - duration: 180
+      arrivalRate: 15
+      name: "Heavy sustained load - 500 users over 3 minutes"
+  defaults:
+    headers:
+      User-Agent: "Artillery Heavy Load Test"
+
+scenarios:
+  - name: "Complete User Journey"
+    flow:
+      # Land on homepage
+      - get:
+          url: "/"
+      - think: 2
+
+      # Browse discover page
+      - get:
+          url: "/discover"
+      - think: 3
+
+      # View specific movie
+      - get:
+          url: "/movie/550" # Fight Club
+      - think: 8
+
+      # Check theaters
+      - get:
+          url: "/theaters"
+      - think: 4
+
+      # Search for movies
+      - get:
+          url: "/search?q=christopher+nolan"
+      - think: 3
+
+  - name: "Quick Browser"
+    flow:
+      - get:
+          url: "/"
+      - think: 1
+      - get:
+          url: "/discover"
+      - think: 2

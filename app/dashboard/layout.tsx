@@ -19,6 +19,7 @@ import {
   X,
   MessageCircle,
   Sparkles,
+  Ticket,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,6 +33,7 @@ const navigation = [
   { name: 'Home', href: '/dashboard', icon: Home },
   { name: 'Explore', href: '/explore', icon: Compass },
   { name: 'For You', href: '/for-you', icon: Sparkles },
+  { name: 'Theaters', href: '/theaters', icon: Ticket, badge: 'NEW' },
   { name: 'Channels', href: '/channels', icon: MessageCircle },
   { name: 'Feed', href: '/feed', icon: Radio },
   { name: 'Profile', href: '/profile', icon: User },
@@ -155,6 +157,11 @@ export default function DashboardLayout({
                 >
                   <item.icon className="h-5 w-5" />
                   <span className="font-medium">{item.name}</span>
+                  {item.badge && (
+                    <span className="ml-auto text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
+                      {item.badge}
+                    </span>
+                  )}
                 </Link>
               )
             })}
