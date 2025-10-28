@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,8 +10,9 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { createPost, getChannel } from '@/app/actions/channels'
-import { ArrowLeft, Loader2 } from 'lucide-react'
+import { ArrowLeft, Loader2, CheckCircle, Sparkles } from 'lucide-react'
 import Link from 'next/link'
+import { motion, AnimatePresence } from 'framer-motion'
 
 const FLAIRS = ['Discussion', 'Review', 'Question', 'News', 'Meme', 'Meta']
 
@@ -30,6 +31,7 @@ export default function CreatePostPage({
   const [isSpoiler, setIsSpoiler] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [showSuccess, setShowSuccess] = useState(false)
   const router = useRouter()
 
   // Fetch channel data on mount
@@ -49,7 +51,7 @@ export default function CreatePostPage({
     loadChannel()
   }, [params.slug])
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     if (!title.trim()) {
       setError('Title is required')
@@ -74,13 +76,22 @@ export default function CreatePostPage({
         is_spoiler: isSpoiler
       })
 
-      router.push(`/post/${post.id}`)
+      // Show success animation
+      setShowSuccess(true)
+      
+      // Wait for animation then redirect back to channel (so user sees their post immediately)
+      setTimeout(() => {
+        router.push(`/channel/${params.slug}`)
+        router.refresh() // Force refresh to show new post
+      }, 1500)
     } catch (err) {
       console.error('Failed to create post:', err)
-      setError('Failed to create post. Please try again.')
+      // Show the underlying error message if available (e.g. RLS/auth error from Supabase)
+      const message = (err as Error)?.message || 'Failed to create post. Please try again.'
+      setError(message)
       setIsSubmitting(false)
     }
-  }
+  }, [channelId, title, content, flair, thumbnailUrl, isSpoiler, router])
 
   if (isLoading) {
     return (
@@ -102,7 +113,56 @@ export default function CreatePostPage({
         Back to {channelName || 'channel'}
       </Link>
 
-      <Card className="p-6">
+      <Card className="p-6 relative">
+        {/* Success Animation Overlay */}
+        <AnimatePresence>
+          {showSuccess && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="absolute inset-0 z-50 flex items-center justify-center bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm rounded-lg"
+            >
+              <div className="text-center space-y-4">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: [0, 1.2, 1] }}
+                  transition={{ duration: 0.5, times: [0, 0.6, 1] }}
+                  className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 dark:bg-green-900/30"
+                >
+                  <CheckCircle className="w-12 h-12 text-green-600 dark:text-green-400" />
+                </motion.div>
+                
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="space-y-2"
+                >
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    Post Created! 🎉
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Taking you back to the channel...
+                  </p>
+                </motion.div>
+
+                {/* Sparkle animation */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: [0, 1, 0] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="flex justify-center gap-2"
+                >
+                  <Sparkles className="w-5 h-5 text-yellow-500" />
+                  <Sparkles className="w-4 h-4 text-yellow-400" />
+                  <Sparkles className="w-5 h-5 text-yellow-500" />
+                </motion.div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <h1 className="text-2xl font-bold mb-2">Create a Post</h1>
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
           Share your thoughts with {channelName}

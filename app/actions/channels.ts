@@ -388,9 +388,22 @@ export async function createPost(data: {
     `)
     .single()
 
-  if (error) throw error
+  if (error) {
+    // Surface Supabase error with more context so the client can show it
+    console.error('createPost error:', {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: (error as any)?.code
+    })
+    // Throw a JS Error with the Supabase message for the client to display
+    throw new Error(error.message || 'Failed to create post')
+  }
 
+  // Revalidate both the channel page and channels list
   revalidatePath(`/channel/${(post as any).channel.slug}`)
+  revalidatePath('/channels')
+  
   return post
 }
 
@@ -638,4 +651,158 @@ export async function getUserVotes(votableIds: string[], votableType: 'post' | '
     .in('votable_id', votableIds)
 
   return new Map(votes?.map(v => [v.votable_id, v.vote_type]))
+}
+
+// ============================================
+// User Channel Management
+// ============================================
+
+// Get channels created by a specific user
+export async function getUserCreatedChannels(userId: string) {
+  try {
+    const supabase = await createClient()
+    
+    const { data: channels, error } = await supabase
+      .from('channels')
+      .select('*')
+      .eq('created_by', userId)
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+
+    return { success: true, channels: channels || [] }
+  } catch (error) {
+    console.error('Failed to get user channels:', error)
+    return { success: false, error: 'Failed to get user channels', channels: [] }
+  }
+}
+
+// Get channel analytics for admin/moderator
+export async function getChannelAnalytics(channelId: string) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { success: false, error: 'Not authenticated', analytics: null }
+    }
+
+    // Check if user is moderator or creator
+    const { data: channel } = await supabase
+      .from('channels')
+      .select('created_by, moderator_ids')
+      .eq('id', channelId)
+      .single()
+
+    if (!channel || (channel.created_by !== user.id && !channel.moderator_ids.includes(user.id))) {
+      return { success: false, error: 'Not authorized', analytics: null }
+    }
+
+    // Get channel stats
+    const { data: channelData } = await supabase
+      .from('channels')
+      .select('name, slug, description, member_count, post_count, created_at, type, icon')
+      .eq('id', channelId)
+      .single()
+
+    // Get post engagement stats
+    const { data: posts } = await supabase
+      .from('posts')
+      .select('score, view_count, comment_count, created_at')
+      .eq('channel_id', channelId)
+      .eq('is_deleted', false)
+
+    // Get member growth (last 30 days)
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    
+    const { count: newMembersCount } = await supabase
+      .from('channel_members')
+      .select('*', { count: 'exact', head: true })
+      .eq('channel_id', channelId)
+      .gte('joined_at', thirtyDaysAgo.toISOString())
+
+    // Get top posts
+    const { data: topPosts } = await supabase
+      .from('posts')
+      .select('id, title, score, view_count, comment_count, created_at')
+      .eq('channel_id', channelId)
+      .eq('is_deleted', false)
+      .order('score', { ascending: false })
+      .limit(5)
+
+    // Calculate engagement metrics
+    const totalViews = posts?.reduce((sum, p) => sum + (p.view_count || 0), 0) || 0
+    const totalEngagement = posts?.reduce((sum, p) => sum + (p.score || 0) + (p.comment_count || 0), 0) || 0
+    const avgPostScore = posts?.length ? posts.reduce((sum, p) => sum + (p.score || 0), 0) / posts.length : 0
+
+    // Get recent activity (posts per day last 7 days)
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    
+    const { count: recentPostsCount } = await supabase
+      .from('posts')
+      .select('*', { count: 'exact', head: true })
+      .eq('channel_id', channelId)
+      .gte('created_at', sevenDaysAgo.toISOString())
+
+    const analytics = {
+      channel: channelData,
+      stats: {
+        totalMembers: channelData?.member_count || 0,
+        totalPosts: channelData?.post_count || 0,
+        totalViews,
+        totalEngagement,
+        avgPostScore: Math.round(avgPostScore * 10) / 10,
+        newMembersThisMonth: newMembersCount || 0,
+        postsThisWeek: recentPostsCount || 0,
+        engagementRate: channelData?.member_count 
+          ? Math.round((totalEngagement / channelData.member_count) * 100) / 100
+          : 0
+      },
+      topPosts: topPosts || [],
+      growthTrend: newMembersCount && newMembersCount > 0 ? 'growing' : 'stable'
+    }
+
+    return { success: true, analytics }
+  } catch (error) {
+    console.error('Failed to get channel analytics:', error)
+    return { success: false, error: 'Failed to get channel analytics', analytics: null }
+  }
+}
+
+// Get all channels where user is a moderator
+export async function getUserModeratedChannels(userId: string) {
+  try {
+    const supabase = await createClient()
+    
+    const { data: memberships, error } = await supabase
+      .from('channel_members')
+      .select(`
+        channel_id,
+        role,
+        channels (
+          id,
+          name,
+          slug,
+          description,
+          icon,
+          member_count,
+          post_count,
+          created_at,
+          type
+        )
+      `)
+      .eq('user_id', userId)
+      .eq('role', 'moderator')
+
+    if (error) throw error
+
+    const channels = memberships?.map(m => (m as any).channels).filter(Boolean) || []
+
+    return { success: true, channels }
+  } catch (error) {
+    console.error('Failed to get moderated channels:', error)
+    return { success: false, error: 'Failed to get moderated channels', channels: [] }
+  }
 }

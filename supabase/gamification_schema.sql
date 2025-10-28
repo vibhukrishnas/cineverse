@@ -352,6 +352,11 @@ CREATE POLICY "Users can update own stats"
   ON public.user_stats FOR UPDATE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own stats" ON public.user_stats;
+CREATE POLICY "Users can insert own stats"
+  ON public.user_stats FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
 -- Badges (Public read-only)
 ALTER TABLE public.badges ENABLE ROW LEVEL SECURITY;
 
@@ -467,7 +472,9 @@ ON CONFLICT (badge_type) DO NOTHING;
 
 -- Trigger to initialize user stats on signup
 CREATE OR REPLACE FUNCTION initialize_user_stats()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER 
+SECURITY DEFINER
+AS $$
 BEGIN
   INSERT INTO public.user_stats (user_id)
   VALUES (NEW.id)

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Film, Star, TrendingUp, Bookmark, Sparkles, MessageCircle, Users as UsersIcon, Ticket, MapPin } from 'lucide-react'
+import { Film, Star, TrendingUp, Bookmark, Sparkles, MessageCircle, Users as UsersIcon, Ticket, MapPin, Trophy, Award, Zap } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { TMDBMovie, TMDBMovieDetail } from '@/types/tmdb.types'
@@ -12,10 +12,15 @@ import { TwitterFeedWidget } from '@/components/social/twitter-feed-widget'
 import { MovieUpdatesWidget } from '@/components/movies/movie-updates-widget'
 import { RecentActivityWidget } from '@/components/dashboard/recent-activity-widget'
 import { LanguageSelector } from '@/components/location/language-selector'
+import { LevelProgress } from '@/components/gamification/level-progress'
+import { BadgeShowcase } from '@/components/gamification/badge-showcase'
+import { KarmaBadge } from '@/components/gamification/karma-badge'
 import { analytics } from '@/lib/analytics/posthog'
 import { getUserWatchlistWithDetails } from '@/app/actions/watchlist'
 import { getUserStats } from '@/app/actions/profile'
 import { getChannels } from '@/app/actions/channels'
+import { getUserAchievements } from '@/app/actions/achievements'
+import { calculateLevel } from '@/app/actions/gamification'
 import { createClient } from '@/lib/supabase/client'
 import { type LanguagePreference, ALL_LANGUAGES } from '@/lib/location/geolocation'
 import Link from 'next/link'
@@ -37,6 +42,10 @@ export default function DashboardPage() {
     followingCount: 0,
   })
   const [statsLoading, setStatsLoading] = useState(true)
+  const [achievements, setAchievements] = useState<any[]>([])
+  const [achievementsLoading, setAchievementsLoading] = useState(true)
+  const [userProfile, setUserProfile] = useState<any>(null)
+  const [userLevel, setUserLevel] = useState<any>(null)
 
   useEffect(() => {
     // Track dashboard visit
@@ -58,6 +67,8 @@ export default function DashboardPage() {
     loadWatchlist()
     loadUserStats()
     loadChannels()
+    loadAchievements()
+    loadUserProfile()
   }, [])
 
   const loadUserStats = async () => {
@@ -108,6 +119,51 @@ export default function DashboardPage() {
     }
   }
 
+  const loadAchievements = async () => {
+    try {
+      setAchievementsLoading(true)
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (user) {
+        const result = await getUserAchievements(user.id)
+        if (result.success) {
+          // Get recent achievements (last 5)
+          setAchievements(result.achievements.slice(0, 5))
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load achievements:', error)
+    } finally {
+      setAchievementsLoading(false)
+    }
+  }
+
+  const loadUserProfile = async () => {
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+        
+        setUserProfile(profile)
+        
+        // Calculate level from karma
+        if (profile) {
+          const level = await calculateLevel(profile.karma || 0)
+          setUserLevel(level)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load user profile:', error)
+    }
+  }
+
   const loadTrendingMovies = async (region: string = 'US', language: string = 'en') => {
     try {
       setLoading(true)
@@ -150,6 +206,100 @@ export default function DashboardPage() {
           Discover, review, and discuss your favorite movies
         </p>
       </div>
+
+      {/* Gamification Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.05 }}
+        className="mb-6"
+      >
+        <Card className="bg-gradient-to-br from-purple-500/10 via-pink-500/10 to-orange-500/10 border-purple-500/20">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-purple-500" />
+                <CardTitle>Your Progress</CardTitle>
+              </div>
+              <Link href="/badges">
+                <Button variant="ghost" size="sm">
+                  View All <Award className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+            <CardDescription>Track your achievements and level up!</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Level Progress */}
+            {userProfile && userLevel && (
+              <div className="space-y-2">
+                <LevelProgress 
+                  currentKarma={userProfile.karma || 0}
+                  currentLevel={userLevel.level}
+                  currentLevelName={userLevel.name}
+                  nextLevel={userLevel.nextLevel}
+                  nextLevelName={userLevel.nextLevelName}
+                  nextLevelKarma={userLevel.nextLevelKarma}
+                  currentLevelMinKarma={userLevel.minKarma}
+                />
+              </div>
+            )}
+
+            {/* Quick Stats */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center p-3 rounded-lg bg-background/50">
+                <Zap className="h-5 w-5 text-yellow-500 mx-auto mb-1" />
+                <div className="text-2xl font-bold">{userProfile?.karma || 0}</div>
+                <p className="text-xs text-muted-foreground">Karma Points</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-background/50">
+                <Trophy className="h-5 w-5 text-purple-500 mx-auto mb-1" />
+                <div className="text-2xl font-bold">{achievements.length}</div>
+                <p className="text-xs text-muted-foreground">Achievements</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-background/50">
+                <Award className="h-5 w-5 text-blue-500 mx-auto mb-1" />
+                <div className="text-2xl font-bold">{userStats.reviewsCount}</div>
+                <p className="text-xs text-muted-foreground">Reviews</p>
+              </div>
+            </div>
+
+            {/* Recent Achievements */}
+            {!achievementsLoading && achievements.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-yellow-500" />
+                  Recent Achievements
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                  {achievements.slice(0, 5).map((achievement: any) => (
+                    <div
+                      key={achievement.id}
+                      className="p-2 rounded-lg bg-background/50 hover:bg-background/80 transition-colors text-center"
+                      title={achievement.description}
+                    >
+                      <div className="text-2xl mb-1">{achievement.icon || '🏆'}</div>
+                      <p className="text-xs font-medium truncate">{achievement.name}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Karma Badge */}
+            {userProfile && userLevel && (
+              <div className="flex justify-center">
+                <KarmaBadge 
+                  karma={userProfile.karma || 0}
+                  level={userLevel.level}
+                  levelName={userLevel.name}
+                  showDetails={true}
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-3">

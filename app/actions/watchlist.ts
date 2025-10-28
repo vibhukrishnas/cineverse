@@ -262,3 +262,49 @@ export async function getUserFavorites() {
     return { success: false, error: 'Failed to get favorites', data: [] }
   }
 }
+
+// Get favorites with full movie details from TMDB
+export async function getUserFavoritesWithDetails() {
+  try {
+    const supabase = await createClient()
+    
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return { success: false, error: 'Not authenticated', movies: [] }
+    }
+
+    const { data, error } = await supabase
+      .from('favorites')
+      .select('movie_id, added_at')
+      .eq('user_id', user.id)
+      .order('added_at', { ascending: false })
+      .limit(20) // Limit to prevent too many API calls
+
+    if (error) {
+      return { success: false, error: error.message, movies: [] }
+    }
+
+    if (!data || data.length === 0) {
+      return { success: true, movies: [] }
+    }
+
+    // Fetch movie details from TMDB for each movie
+    const moviePromises = data.map(async (item) => {
+      try {
+        const movieDetails = await getMovieDetails(item.movie_id)
+        return movieDetails
+      } catch (error) {
+        console.error(`Failed to fetch movie ${item.movie_id}:`, error)
+        return null
+      }
+    })
+
+    const movies = await Promise.all(moviePromises)
+    const validMovies = movies.filter((movie): movie is TMDBMovieDetail => movie !== null)
+
+    return { success: true, movies: validMovies }
+  } catch (error) {
+    console.error('Failed to get favorites with details:', error)
+    return { success: false, error: 'Failed to get favorites', movies: [] }
+  }
+}

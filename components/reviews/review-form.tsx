@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { createReview, updateReview, type CreateReviewInput } from '@/app/actions/reviews'
-import { AlertCircle, Loader2 } from 'lucide-react'
+import { AlertCircle, Loader2, CheckCircle, Sparkles } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface ReviewFormProps {
   movieId: number
@@ -28,6 +29,7 @@ interface ReviewFormProps {
 export function ReviewForm({ movieId, existingReview, onSuccess, onCancel }: ReviewFormProps) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const [showSuccess, setShowSuccess] = useState(false)
 
   // Form state
   const [rating, setRating] = useState(existingReview?.rating || 0)
@@ -93,7 +95,11 @@ export function ReviewForm({ movieId, existingReview, onSuccess, onCancel }: Rev
           setError(result.error)
         } else {
           console.log('✅ Review submitted successfully')
-          onSuccess?.()
+          setShowSuccess(true)
+          // Wait for animation then call onSuccess
+          setTimeout(() => {
+            onSuccess?.()
+          }, 2000)
         }
       } catch (err) {
         console.error('💥 Exception during review submission:', err)
@@ -131,7 +137,56 @@ export function ReviewForm({ movieId, existingReview, onSuccess, onCancel }: Rev
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6 relative">
+      {/* Success Animation Overlay */}
+      <AnimatePresence>
+        {showSuccess && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className="absolute inset-0 z-50 flex items-center justify-center bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm rounded-lg"
+          >
+            <div className="text-center space-y-4">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: [0, 1.2, 1] }}
+                transition={{ duration: 0.5, times: [0, 0.6, 1] }}
+                className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 dark:bg-green-900/30"
+              >
+                <CheckCircle className="w-12 h-12 text-green-600 dark:text-green-400" />
+              </motion.div>
+              
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="space-y-2"
+              >
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  Review Submitted! 🎉
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Thank you for sharing your thoughts
+                </p>
+              </motion.div>
+
+              {/* Sparkle animation */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0, 1, 0] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="flex justify-center gap-2"
+              >
+                <Sparkles className="w-5 h-5 text-yellow-500" />
+                <Sparkles className="w-4 h-4 text-yellow-400" />
+                <Sparkles className="w-5 h-5 text-yellow-500" />
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Overall Rating */}
       <div className="space-y-2">
         <Label className="text-base font-semibold">Overall Rating *</Label>
