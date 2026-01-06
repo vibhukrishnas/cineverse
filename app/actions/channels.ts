@@ -296,10 +296,11 @@ export async function getPosts(options: {
     .range(options.offset || 0, (options.offset || 0) + (options.limit || 19))
 
   if (error) throw error
+  if (!posts || posts.length === 0) return []
 
   // Get user votes for these posts
   if (user && posts) {
-    const postIds = posts.map(p => p.id)
+    const postIds = posts.map((p: any) => p.id)
     const { data: votes } = await supabase
       .from('votes')
       .select('votable_id, vote_type')
@@ -309,7 +310,7 @@ export async function getPosts(options: {
 
     const voteMap = new Map(votes?.map(v => [v.votable_id, v.vote_type]))
 
-    return posts.map(post => ({
+    return posts.map((post: any) => ({
       ...post,
       user_vote: voteMap.get(post.id) || null
     })) as PostWithAuthor[]
